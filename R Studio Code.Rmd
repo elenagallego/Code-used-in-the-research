@@ -1,0 +1,314 @@
+---
+title: "tfg"
+output: html_document
+date: "2023-05-05"
+---
+
+EME10. ELENA GALLEGO, VIKTORIYA KROT AND SALMA FERRER. R MARKDOWN. 
+
+Project title: "The determinants of prices for real estate in Barcelona". 
+Code for the project. 
+```{r}
+#Load the necessary libraries
+library(tidyverse)
+library(dplyr)
+library(dygraphs)
+library(DT)
+library(fivethirtyeight)
+library(gt)
+library(maps)
+library(plotly)
+library(threejs)
+library(tidyquant)
+library(rworldmap)
+library(ggmap)
+library(leaflet)
+library(stringr)
+library(highcharter)
+library(ggcorrplot)
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(broom)
+library(glmnet)
+library(ggstance)
+library(lme4)
+library(knitr)
+library(sf)
+library(sjPlot)
+```
+
+
+```{r}
+#Read dataset
+dataset <- read_delim("/Users/salmaferrer/Desktop/Salma/Universidad/Cuarto/tfg/datatfg.csv", delim=",",locale = locale(decimal_mark=","))
+```
+```{r}
+#Do logarithm transformations
+dataset$ln_price <- log(dataset$price)
+dataset$ln_square_meters <- log(dataset$square_meters)
+```
+
+#EXPLORATORY DATA ANALYSIS
+
+```{r}
+#Load the geoJSON files for the mapping
+geojson_barris <- file.choose()
+geojson_barris <- st_read(geojson_barris)
+geojson_district <- file.choose()
+geojson_district <- st_read(geojson_district)
+```
+
+##Rent price per neighbourhood
+```{r}
+#Upload dataset for neighbourhood observations
+subset_n <- read_delim("/Users/salmaferrer/Desktop/Salma/Universidad/Cuarto/tfg/dataset_barris.csv", delim=",",locale = locale(decimal_mark=","))
+```
+
+
+```{r}
+#Merge the neighbourhood dataset with the mapping dataset
+barris <- subset_n %>% select(mean_price)
+merged <- cbind(geojson_barris, barris) 
+
+ggplot() +
+  geom_sf(data = merged, aes(fill = mean_price)) +
+  scale_fill_gradient(low = "pink", high = "brown") +
+  theme_void()
+```
+
+```{r}
+ggplot(dataset, aes(x = neighbourhood, y = price)) +
+  geom_bar(stat = "identity", fill = "coral3") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  xlab("Neighborhoods") +
+  ylab("Rent Prices") +
+  ggtitle("Rent Prices by Neighborhood in Barcelona")
+```
+
+
+
+##Rent price per district
+```{r}
+#Load district dataset
+subset_d <- read_delim("/Users/salmaferrer/Desktop/Salma/Universidad/Cuarto/tfg/dataset_districts.csv", delim=",",locale = locale(decimal_mark=","))
+```
+
+```{r}
+#Merge district dataset with mapping dataset
+districts <- subset_d %>% select(d_mean_price, NOM)
+merged_data <- merge(geojson_district, districts, by = "NOM", all.x = TRUE)
+
+ggplot() +
+  geom_sf(data = merged_data, aes(fill = d_mean_price)) +
+  scale_fill_gradient(low = "pink", high = "brown") +
+  theme_void()
+```
+
+```{r}
+ggplot(dataset, aes(x = price, fill = district)) +
+  geom_histogram(binwidth = 100, position = "identity") +
+  theme_minimal() +
+  xlab("Rent Prices") +
+  ylab("Count") +
+  ggtitle("Price Distribution by Districts") +
+  facet_wrap(~ district, nrow = 5)
+```
+
+
+
+##Average income per neighbourhood
+
+```{r}
+subset_n <- read_delim("/Users/salmaferrer/Desktop/Salma/Universidad/Cuarto/tfg/dataset_barris.csv", delim=",",locale = locale(decimal_mark=","))
+```
+
+```{r}
+barris_income <- subset_n %>% select(average_disposable_income)
+merged <- cbind(geojson_barris, barris_income) 
+ggplot() +
+  geom_sf(data = merged, aes(fill = average_disposable_income)) +
+  scale_fill_gradient(low = "pink", high = "brown") +
+  theme_void()
+```
+
+##Average income per district
+
+```{r}
+subset_d <- read_delim("/Users/salmaferrer/Desktop/Salma/Universidad/Cuarto/tfg/dataset_districts.csv", delim=",",locale = locale(decimal_mark=","))
+```
+
+```{r}
+district_income <- subset_d %>% select(average_net_income)
+merged <- cbind(geojson_district, district_income) 
+
+ggplot() +
+  geom_sf(data = merged, aes(fill = average_net_income)) +
+  scale_fill_gradient(low = "pink", high = "brown") +
+  theme_void()
+```
+
+##Temporal accommodations per district
+```{r}
+subset_d <- read_delim("/Users/salmaferrer/Desktop/Salma/Universidad/Cuarto/tfg/dataset_districts.csv", delim=",",locale = locale(decimal_mark=","))
+```
+
+```{r}
+district_temp<- subset_d %>% select(d_numb_temp)
+merged_temp <- cbind(geojson_district, district_temp) 
+ggplot() +
+  geom_sf(data = merged_temp, aes(fill = d_numb_temp)) +
+  scale_fill_gradient(low = "pink", high = "brown") +
+  theme_void()
+```
+
+##Temporal accommodations per neighbourhood
+```{r}
+subset_n <- read_delim("/Users/salmaferrer/Desktop/Salma/Universidad/Cuarto/tfg/dataset_barris.csv", delim=",",locale = locale(decimal_mark=","))
+```
+
+```{r}
+barris_temp <- subset_n %>% select(n_numb_temp)
+
+merged <- cbind(geojson_barris, barris_temp) 
+ggplot() +
+  geom_sf(data = merged, aes(fill = n_numb_temp)) +
+  scale_fill_gradient(low = "pink", high = "brown") +
+  theme_void()
+```
+
+
+
+##Unemployment per district
+```{r}
+district_unemp <- subset_d %>% select(d_unemployment_relative)
+
+merged <- cbind(geojson_district, district_unemp) 
+ggplot() +
+  geom_sf(data = merged, aes(fill = d_unemployment_relative)) +
+  scale_fill_gradient(low = "pink", high = "brown") +
+  theme_void()
+```
+
+##Unemployment per neighbourhood
+```{r}
+barris_unemp <- subset_n %>% select(n_unemployment_relative)
+
+merged <- cbind(geojson_barris, barris_unemp) 
+ggplot() +
+  geom_sf(data = merged, aes(fill = n_unemployment_relative)) +
+  scale_fill_gradient(low = "pink", high = "brown") +
+  theme_void()
+```
+
+
+#REGRESSION MODELS
+##Regression using real estate characteristics
+
+```{r}
+lmfit6 <- lm(ln_price ~ temporal + furnished + district + bedrooms + bathrooms + ln_square_meters + elevator + balcony + heating + metro + energy_ratings + real_estate_agency, data = dataset)
+summary(lmfit6)
+```
+
+
+```{r}
+#Present the results in a table
+tab_model(lmfit6, 
+          transform = NULL, auto.label = FALSE, 
+          dv.labels = c("Linear regression housing characteristics"))
+```
+
+
+##Regression using real estate and neighbourhood characteristics
+
+```{r}
+lmfit7 <- lm(ln_price~  n_metro_stations + n_pop + n_disposable_income + n_unemployment + n_green_areas + n_mean_n02pp + n_spanish + n_mean_age_flats + temporal + furnished + district + bedrooms + bathrooms + ln_square_meters + elevator + balcony + heating + metro + energy_ratings + real_estate_agency, data= dataset)
+
+summary(lmfit7)
+```
+
+```{r}
+tab_model(lmfit7, 
+          transform = NULL, auto.label = FALSE, 
+          dv.labels = c("Adding neighbourhood ch."))
+```
+
+
+
+##Regression using real estate and district characteristics
+
+```{r}
+lmfit8 <- lm(ln_price ~ d_pop + d_avgmonth_income + d_spanish + d_noise_complaints + d_mean_n02pp + d_poverty_risk+ d_metro_stations + temporal + metro + furnished + bedrooms + bathrooms + ln_square_meters + elevator + balcony + heating + energy_ratings + real_estate_agency, data= dataset)
+
+summary(lmfit8)
+```
+
+
+```{r}
+tab_model(lmfit8, 
+          transform = NULL, auto.label = FALSE, 
+          dv.labels = c("Adding district ch."))
+```
+
+
+#APPENDIX
+##Regression using real estate characteristics, for each district
+
+```{r}
+#Create subsets for each district
+ciutatvella_data <- subset(dataset, district == "Ciudad Veja")
+eixample_data <- subset(dataset, district == "Ensanche")
+santsmontjuic_data <- subset(dataset, district == "Sants-Montjuïc")
+lescorts_data <- subset(dataset, district == "Les Corts ")
+sarriastgervasi_data <- subset(dataset, district == "Sarriá-San Gervasiol ")
+gracia_data<- subset(dataset, district == "Gracia")
+horta_data<- subset(dataset, district == "Horta-Guinardó")
+noubarris_data <- subset(dataset, district == "Nou Barris")
+santandreu_data<- subset(dataset, district == "San Andrés")
+santmarti_data<- subset(dataset, district == "San Martín ")
+
+```
+
+
+```{r}
+#Hedonic pricing regressions for each district
+model_ciutatvella <- lm(ln_price ~ temporal + furnished + bedrooms + bathrooms + ln_square_meters + elevator + balcony + heating + metro + energy_ratings + real_estate_agency, data = ciutatvella_data)
+
+model_eixample <- lm(ln_price ~ temporal + furnished + bedrooms + bathrooms + ln_square_meters + elevator + balcony + heating + metro + energy_ratings + real_estate_agency, data = eixample_data)
+
+model_santsmontjuic <- lm(ln_price ~ temporal + furnished + bedrooms + bathrooms + ln_square_meters + elevator + balcony + heating + metro + energy_ratings + real_estate_agency, data = santsmontjuic_data)
+
+model_lescorts <- lm(ln_price ~ temporal + furnished + bedrooms + bathrooms + ln_square_meters + elevator + balcony + heating + metro + energy_ratings + real_estate_agency, data = lescorts_data)
+
+model_sarriastgervasi <- lm(ln_price ~ temporal + furnished + bedrooms + bathrooms + ln_square_meters + elevator + balcony + heating + metro + energy_ratings + real_estate_agency, data = sarriastgervasi_data)
+
+model_gracia <- lm(ln_price ~ temporal + furnished + bedrooms + bathrooms + ln_square_meters + elevator + balcony + heating + metro + energy_ratings + real_estate_agency, data = gracia_data)
+
+model_horta <- lm(ln_price ~ temporal + furnished + bedrooms + bathrooms + ln_square_meters + elevator + balcony + heating + metro + energy_ratings + real_estate_agency, data = horta_data)
+
+model_noubarris <- lm(ln_price ~ temporal + furnished + bedrooms + bathrooms + ln_square_meters + elevator + balcony + heating + metro + energy_ratings + real_estate_agency, data = noubarris_data)
+
+model_santandreu <- lm(ln_price ~ temporal + furnished + bedrooms + bathrooms + ln_square_meters + elevator + balcony + heating + metro + energy_ratings + real_estate_agency, data = santandreu_data)
+
+model_santmarti <- lm(ln_price ~ temporal + furnished  + bedrooms + bathrooms + ln_square_meters + elevator + balcony + heating + metro + energy_ratings + real_estate_agency, data = santmarti_data)
+```
+
+
+```{r}
+#Summary table for the regression models by district
+model_list <- list(model_ciutatvella, model_eixample, model_santsmontjuic, model_lescorts, model_sarriastgervasi, model_gracia, model_horta, model_noubarris, model_santandreu, model_santmarti)
+
+model_labels <- c("Ciutat Vella", "Eixample", "Sants-Montjuïc", "Les Corts", "Sarrià-Sant Gervasi", "Gracia", "Horta-Guinardó", "Nou Barris", "Sant Andreu", "Sant Martí")
+tab_model(
+  models = model_list,
+  transform = NULL,
+  auto.label = FALSE,
+  dv.labels = model_labels
+)
+```
+
+
+
+
+
+
